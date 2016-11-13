@@ -2,8 +2,8 @@
 //  DDHookFunction.h
 //  DarwinDiversions
 //
-//  Created by callum
-//  Copyright © 2016 callum. All rights reserved.
+//  Created by satori
+//  Copyright © 2016 satori. All rights reserved.
 //
 
 #include <stdint.h>
@@ -35,3 +35,11 @@ API_CALL DDHookRef DDHookFunction(void *addr, void *replacement, void **original
 API_CALL DDHookRef DDHookFunctionEx(void *addr, void *replacement, void **original, DDHookMethod method);
 
 API_CALL void DDUnhook(DDHookRef ref);
+
+//
+// Internal functions
+//
+
+// TODO: more of these
+
+bool DDHookFunctionMethodException(void *addr, void *replacement, void **original);
