@@ -13,7 +13,7 @@
 #include "BreakpointHandler.h"
 #include "ExceptionHandler.h"
 #include "Host.h"
-#include "Process.h"
+#include "ProcessStore.h"
 #include "mach_exc.h"
 
 extern "C" boolean_t mach_exc_server(mach_msg_header_t *, mach_msg_header_t *);
@@ -28,7 +28,7 @@ extern "C" kern_return_t catch_mach_exception_raise(
 
     pid_t pid;
     pid_for_task(task, &pid);
-    auto proc = Process::GetProcess(pid);
+    auto proc = ProcessStore::SharedStore()->GetProcess(pid);
     auto handler = proc->exception_handler();
     return handler.ExceptionCallback(exception);
 }
@@ -64,15 +64,15 @@ void *server_thread(void *arg) {
     return NULL;
 }
 
-ThreadState *Exception::ExceptionThreadState() {
+std::shared_ptr<ThreadState> Exception::ExceptionThreadState(
+    mach_port_t thread) {
     pid_t pid;
     kern_return_t status = pid_for_task(_task, &pid);
     if (status != KERN_SUCCESS) return nullptr;
 
-    auto proc = Process::GetProcess(pid);
+    auto proc = ProcessStore::SharedStore()->GetProcess(pid);
     if (proc) {
-        auto stateWrapper = new Process::ThreadState(proc.get(), _thread);
-        return stateWrapper->state;
+        return proc->ThreadState(thread);
     }
     return nullptr;
 }
@@ -141,7 +141,8 @@ kern_return_t ExceptionHandler::ExceptionCallback(Exception &exception) {
     if (type != EXC_BREAKPOINT)
         return KERN_FAILURE;  // possibly MIG_DESTROY_REQUEST
 
-    ThreadState *state = exception.ExceptionThreadState();
+    auto state = exception.ExceptionThreadState(exception._thread);
+    state->Load();
     if (state) {
         printf("exception occured at %p\n", (void *)state->CurrentAddress());
         auto bkpt = bkptHandler->BreakpointAtAddress(state->CurrentAddress());
@@ -152,7 +153,6 @@ kern_return_t ExceptionHandler::ExceptionCallback(Exception &exception) {
             }
             // cleanup
             state->Save();
-            delete state;
             bkptHandler->DisableBreakpoint(bkpt);
             thread_resume(exception._thread);
             return KERN_SUCCESS;

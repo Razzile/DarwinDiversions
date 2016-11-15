@@ -89,38 +89,6 @@ inline bool ProcessExists(int pid) {
     return false;
 }
 
-ProcessRef Process::GetProcess(const char *name) {
-    if (!name) return nullptr;
-    int pid = PIDForName(name);
-    if (pid <= 0) return nullptr;
-
-    task_t task;
-    task_for_pid(mach_task_self(), pid, &task);
-    // Platform plt = PlatformForProcess(pid);
-
-    return std::make_shared<Process>(pid, name, task /*, plt*/);
-}
-
-ProcessRef Process::GetProcess(int pid) {
-    if (!ProcessExists(pid)) return nullptr;
-
-    const char *name = NameForPID(pid);  // XXX: can be nullptr
-    task_t task;
-    task_for_pid(mach_task_self(), pid, &task);
-    // Platform plt = PlatformForProcess(pid);
-
-    return std::make_shared<Process>(pid, name, task /*, plt*/);
-}
-
-ProcessRef Process::Self() {
-    const char *name = *_NSGetProgname();
-    int pid = getpid();
-    task_t task = mach_task_self();
-    // Platform plt = PlatformForProcess(pid);
-
-    return std::make_shared<Process>(pid, name, task /*, plt*/);
-}
-
 // TODO: make this a member function and check if is Process::Self()
 bool Process::CanAttach() {
     // assume the build is linked against CoreFoundation and Security
@@ -168,6 +136,30 @@ Platform Process::RunningPlatform() {
     return (kp.kp_proc.p_flag & P_LP64) ? Platform::x86_64 : Platform::x86;
 #endif
     return Platform::UNKNOWN;
+}
+
+std::shared_ptr<ThreadState> Process::ThreadState(mach_port_t thread) {
+    Platform plt = this->RunningPlatform();
+    switch (plt) {
+        case Platform::x86_64: {
+            return std::make_shared<x86_64ThreadState>(thread);
+            break;
+        }
+
+        case Platform::ARMv7: {
+            return std::make_shared<ARMv7ThreadState>(thread);
+            break;
+        }
+
+        case Platform::AArch64: {
+            return std::make_shared<AArch64ThreadState>(thread);
+            break;
+        }
+        default: {
+            return nullptr;
+            break;
+        }
+    }
 }
 
 std::vector<::ThreadState *> Process::Threads(mach_port_t ignore) {
@@ -252,41 +244,4 @@ std::vector<Process::Region> Process::GetRegions(vm_prot_t options) {
         address += size;
     }
     return regions;
-}
-
-Process::ThreadState::ThreadState(mach_port_t task, mach_port_t thread)
-: state(nullptr) {
-    pid_t pid;
-    kern_return_t status = pid_for_task(task, &pid);
-    if (status != KERN_SUCCESS) return;
-
-    auto proc = Process::GetProcess(pid);
-
-    ThreadState(proc.get(), thread);
-}
-
-Process::ThreadState::ThreadState(Process *proc, mach_port_t thread)
-: state(nullptr) {
-    if (proc) {
-        switch (proc->RunningPlatform()) {
-            case Platform::ARMv7: {
-                state = new ARMv7ThreadState(thread);
-                break;
-            }
-            case Platform::AArch64: {
-                state = new AArch64ThreadState(thread);
-                break;
-            }
-            case Platform::x86_64: {
-                state = new x86_64ThreadState(thread);
-                break;
-            }
-            default: {
-                state = new NOPThreadState(thread);
-                break;
-            }
-        }
-    } else {
-        state = new NOPThreadState(thread);
-    }
 }

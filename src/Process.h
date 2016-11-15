@@ -8,17 +8,17 @@
 
 #pragma once
 
+#include <mach/mach.h>
+#include <sys/types.h>
+#include <string>
+#include <vector>
 #include "ExceptionHandler.h"
 #include "Host.h"
 #include "ThreadState.h"
-#include <mach/mach.h>
-#include <string>
-#include <sys/types.h>
-#include <vector>
 
 // TODO: find a vetter way to do this
 // TODO: check if vm_region_64 works correctly when targeting 32 bit processes
-#ifdef __LP64__ // 64 bit functions
+#ifdef __LP64__  // 64 bit functions
 
 #define vm_region_basic_info_data_xx_t vm_region_basic_info_data_64_t
 #define vm_region_info_xx_t vm_region_info_64_t
@@ -29,7 +29,7 @@
 #define vm_region_submap_info_xx vm_region_submap_info_64
 #define vm_region_recurse_xx vm_region_recurse_64
 
-#else // 32 bit functions
+#else  // 32 bit functions
 
 #define vm_region_basic_info_data_xx_t vm_region_basic_info_data_t
 #define vm_region_info_xx_t vm_region_info_t
@@ -55,67 +55,52 @@ using ProcessRef = std::shared_ptr<Process>;
 
 class Process {
 public:
-  struct Region {
-    vm_address_t start;
-    size_t size;
-    vm_prot_t prot;
-    Region(vm_address_t start, size_t size, vm_prot_t prot)
+    struct Region {
+        vm_address_t start;
+        size_t size;
+        vm_prot_t prot;
+        Region(vm_address_t start, size_t size, vm_prot_t prot)
         : start(start), size(size), prot(prot) {}
-  };
+    };
 
-  struct ThreadState {
-    using ThreadStateRef = ::ThreadState *;
-    ThreadStateRef state;
+    static bool CanAttach();  // unsure what to do with this
 
-    ThreadState() : state(nullptr) {}
+    Process(int pid, task_t task, const char *name = "")
+    : _pid(pid), _name(name), _task(task), _paused(false), _handler(task) {}
 
-    ThreadState(Process *proc, mach_port_t thread);
-    ThreadState(mach_port_t task, mach_port_t thread);
+    bool IsAlive();
+    bool Kill();
 
-    operator ThreadStateRef() { return state; }
-    ThreadStateRef operator->() { return state; }
-  };
+    bool Pause();
+    bool Resume();
 
-  static ProcessRef GetProcess(const char *name);
-  static ProcessRef GetProcess(int pid);
-  static ProcessRef Self();
+    bool InjectLibrary(const char *lib);  // TODO: add this at later date
 
-  static bool CanAttach();
+    enum Platform RunningPlatform();
 
-  Process(int pid, const char *name, task_t task)
-      : _pid(pid), _name(name), _task(task), _paused(false), _handler(task) {}
+    std::shared_ptr<ThreadState> ThreadState(mach_port_t thread);
 
-  bool IsAlive();
-  bool Kill();
+    // can ref values be used with virtual classes?
+    std::vector<::ThreadState *> Threads(
+        mach_port_t ignore = 0);  // TODO: return empty when not paused
 
-  bool Pause();
-  bool Resume();
+    bool ReadMemory(vm_address_t address, char *output, size_t size);
+    bool WriteMemory(vm_address_t address, char *input, size_t size,
+                     bool force = false);
+    std::vector<Process::Region> GetRegions(vm_prot_t options = VM_PROT_READ |
+                                                                VM_PROT_WRITE);
 
-  bool InjectLibrary(const char *lib); // TODO: add this at later date
+    const ExceptionHandler &exception_handler() { return _handler; }
 
-  enum Platform RunningPlatform();
-
-  // can ref values be used with virtual classes?
-  std::vector<::ThreadState *>
-  Threads(mach_port_t ignore = 0); // TODO: return empty when not paused
-
-  bool ReadMemory(vm_address_t address, char *output, size_t size);
-  bool WriteMemory(vm_address_t address, char *input, size_t size,
-                   bool force = false);
-  std::vector<Process::Region> GetRegions(vm_prot_t options = VM_PROT_READ |
-                                                              VM_PROT_WRITE);
-
-  const ExceptionHandler &exception_handler() { return _handler; }
-
-  pid_t process_id() { return _pid; }
-  std::string name() { return _name; }
-  task_t task() { return _task; }
-  bool paused() { return _paused; }
+    pid_t process_id() { return _pid; }
+    std::string name() { return _name; }
+    task_t task() { return _task; }
+    bool paused() { return _paused; }
 
 private:
-  pid_t _pid;
-  std::string _name;
-  task_t _task;
-  bool _paused;
-  ExceptionHandler _handler;
+    pid_t _pid;
+    std::string _name;
+    task_t _task;
+    bool _paused;
+    ExceptionHandler _handler;
 };

@@ -9,7 +9,7 @@
 #include "BreakpointFactory.h"
 #include "BreakpointHandler.h"
 #include "DDHookFunction.h"
-#include "Process.h"
+#include "ProcessStore.h"
 
 DDHookRef DDHookFunction(void *addr, void *replacement, void **original) {
     return DDHookFunctionEx(addr, replacement, original, DD_HOOK_DEFAULT);
@@ -49,16 +49,19 @@ DDHookRef DDHookFunctionEx(void *addr, void *replacement, void **original,
 
 bool DDHookFunctionMethodException(void *addr, void *replacement,
                                    void **original) {
-    auto process = Process::Self();
+    auto store = ProcessStore::SharedStore();
+    auto process = store->ProcessSelf();
     auto bpHandler = BreakpointHandler::SharedHandler();
     auto excHandler = process->exception_handler();
-
+    excHandler.SetupHandler();
     auto bp = BreakpointFactory::MakeBreakpointForProcess(
         process.get(), (vm_address_t)addr, BreakpointType::Software);
     if (!bp) return false;
     bp->AddCallback([&](ThreadState &state) {
-        vm_address_t addr = state.CurrentAddress();
+        state["RDI"] = 69;
+        printf("%s\n", state.Description().data());
     });
 
     bpHandler->InstallBreakpoint(bp);
+    return true;
 }

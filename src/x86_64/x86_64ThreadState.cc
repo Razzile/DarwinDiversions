@@ -6,8 +6,8 @@
 //  Copyright © 2016 satori. All rights reserved.
 //
 
-#include "x86_64ThreadState.h"
 #include <sstream>
+#include "x86_64ThreadState.h"
 
 const char *thread_registers[] = {"RAX", "RBX", "RCX", "RDX", "RDI", "RSI",
                                   "RBP", "RSP", "R8",  "R9",  "R10", "R11",
@@ -25,31 +25,31 @@ bool x86_64ThreadState::Load() {
 
     count = x86_DEBUG_STATE64_COUNT;
     thread_get_state(_thread, x86_DEBUG_STATE64,
-                     (thread_state_t)&this->debug_state, &count);
+                     (thread_state_t) & this->debug_state, &count);
 
     uint64_t *statePtr = (uint64_t *)&state;
 
-    STATE_ADD_REGISTER(this, "RAX",    statePtr + 0);
-    STATE_ADD_REGISTER(this, "RBX",    statePtr + 1);
-    STATE_ADD_REGISTER(this, "RCX",    statePtr + 2);
-    STATE_ADD_REGISTER(this, "RDX",    statePtr + 3);
-    STATE_ADD_REGISTER(this, "RDI",    statePtr + 4);
-    STATE_ADD_REGISTER(this, "RSI",    statePtr + 5);
-    STATE_ADD_REGISTER(this, "RBP",    statePtr + 6);
-    STATE_ADD_REGISTER(this, "RSP",    statePtr + 7);
-    STATE_ADD_REGISTER(this, "R8",     statePtr + 8);
-    STATE_ADD_REGISTER(this, "R9",     statePtr + 9);
-    STATE_ADD_REGISTER(this, "R10",    statePtr + 10);
-    STATE_ADD_REGISTER(this, "R11",    statePtr + 11);
-    STATE_ADD_REGISTER(this, "R12",    statePtr + 12);
-    STATE_ADD_REGISTER(this, "R13",    statePtr + 13);
-    STATE_ADD_REGISTER(this, "R14",    statePtr + 14);
-    STATE_ADD_REGISTER(this, "R15",    statePtr + 15);
-    STATE_ADD_REGISTER(this, "RIP",    statePtr + 16);
+    STATE_ADD_REGISTER(this, "RAX", statePtr + 0);
+    STATE_ADD_REGISTER(this, "RBX", statePtr + 1);
+    STATE_ADD_REGISTER(this, "RCX", statePtr + 2);
+    STATE_ADD_REGISTER(this, "RDX", statePtr + 3);
+    STATE_ADD_REGISTER(this, "RDI", statePtr + 4);
+    STATE_ADD_REGISTER(this, "RSI", statePtr + 5);
+    STATE_ADD_REGISTER(this, "RBP", statePtr + 6);
+    STATE_ADD_REGISTER(this, "RSP", statePtr + 7);
+    STATE_ADD_REGISTER(this, "R8", statePtr + 8);
+    STATE_ADD_REGISTER(this, "R9", statePtr + 9);
+    STATE_ADD_REGISTER(this, "R10", statePtr + 10);
+    STATE_ADD_REGISTER(this, "R11", statePtr + 11);
+    STATE_ADD_REGISTER(this, "R12", statePtr + 12);
+    STATE_ADD_REGISTER(this, "R13", statePtr + 13);
+    STATE_ADD_REGISTER(this, "R14", statePtr + 14);
+    STATE_ADD_REGISTER(this, "R15", statePtr + 15);
+    STATE_ADD_REGISTER(this, "RIP", statePtr + 16);
     STATE_ADD_REGISTER(this, "RFLAGS", statePtr + 17);
-    STATE_ADD_REGISTER(this, "CS",     statePtr + 18);
-    STATE_ADD_REGISTER(this, "FS",     statePtr + 19);
-    STATE_ADD_REGISTER(this, "GS",     statePtr + 20);
+    STATE_ADD_REGISTER(this, "CS", statePtr + 18);
+    STATE_ADD_REGISTER(this, "FS", statePtr + 19);
+    STATE_ADD_REGISTER(this, "GS", statePtr + 20);
 
     return true;
 }
@@ -70,8 +70,8 @@ std::string x86_64ThreadState::Description() {
 
     for (auto &reg : _registers) {
         uint64_t val = reg.Value<uint64_t>();
-        stream << reg.Name() << ": " << std::dec << val << " ["
-               << std::hex << val << "]" << std::endl;
+        stream << reg.Name() << ": " << std::dec << val << " [" << std::hex
+               << val << "]" << std::endl;
     }
     return stream.str();
 }
