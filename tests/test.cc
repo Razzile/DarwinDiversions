@@ -8,12 +8,16 @@
 #include <stdio.h>
 #include "../src/DDHookFunction.h"
 #include "../src/ProcessStore.h"
-__attribute__((noinline)) void test(int x) {
+
+#define noinline __attribute__((noinline))
+
+noinline void test2() {
+    int x = 41;
     printf("%d\n", x);
 }
 
-void test2() {
-    printf("2\n");
+noinline void test(int x) {
+    printf("%d\n", x);
 }
 
 int main(int argc, char **argv) {

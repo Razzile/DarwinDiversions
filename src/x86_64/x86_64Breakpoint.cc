@@ -6,10 +6,10 @@
 //  Copyright © 2016 satori. All rights reserved.
 //
 
-#include "x86_64Breakpoint.h"
 #include <thread>
 #include "Host.h"
 #include "Process.h"
+#include "x86_64Breakpoint.h"
 #include "x86_64ThreadState.h"
 
 // structure representing the debug register dr7
@@ -37,8 +37,7 @@ struct dr7_ctx {
 
 // TODO: MAJOR cleanup of the below code
 bool x86_64HardwareBreakpoint::Apply() {
-    pthread_t handle = pthread_self();
-    mach_port_t mach_thread = pthread_mach_thread_np(handle);
+    mach_port_t mach_thread = mach_thread_self();
     std::vector<ThreadState *> threads = _proc->Threads(mach_thread);
     for (int i = 0; i < threads.size(); i++) {
         x86_64ThreadState *state =
@@ -100,8 +99,7 @@ bool x86_64HardwareBreakpoint::Apply() {
 bool x86_64HardwareBreakpoint::Reset() {
     Host *host = Host::CurrentHost();
 
-    pthread_t handle = pthread_self();
-    mach_port_t mach_thread = pthread_mach_thread_np(handle);
+    mach_port_t mach_thread = mach_thread_self();
     std::vector<ThreadState *> threads = _proc->Threads(mach_thread);
 
     for (int i = 0; i < threads.size(); i++) {

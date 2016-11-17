@@ -144,8 +144,10 @@ kern_return_t ExceptionHandler::ExceptionCallback(Exception &exception) {
     auto state = exception.ExceptionThreadState(exception._thread);
     state->Load();
     if (state) {
-        printf("exception occured at %p\n", (void *)state->CurrentAddress());
-        auto bkpt = bkptHandler->BreakpointAtAddress(state->CurrentAddress());
+        // this maybe invalid for HW
+        vm_address_t addr = state->CurrentAddress();
+        printf("exception occured at %p\n", (void *)addr);
+        auto bkpt = bkptHandler->BreakpointAtAddress(addr);
         if (bkpt && bkpt->active()) {
             auto cb = bkpt->callback();
             if (cb) {

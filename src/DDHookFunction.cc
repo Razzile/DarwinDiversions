@@ -6,6 +6,7 @@
 //  Copyright © 2016 satori. All rights reserved.
 //
 
+#include <thread>
 #include "BreakpointFactory.h"
 #include "BreakpointHandler.h"
 #include "DDHookFunction.h"
@@ -49,19 +50,29 @@ DDHookRef DDHookFunctionEx(void *addr, void *replacement, void **original,
 
 bool DDHookFunctionMethodException(void *addr, void *replacement,
                                    void **original) {
-    auto store = ProcessStore::SharedStore();
-    auto process = store->ProcessSelf();
-    auto bpHandler = BreakpointHandler::SharedHandler();
-    auto excHandler = process->exception_handler();
-    excHandler.SetupHandler();
-    auto bp = BreakpointFactory::MakeBreakpointForProcess(
-        process.get(), (vm_address_t)addr, BreakpointType::Software);
-    if (!bp) return false;
-    bp->AddCallback([&](ThreadState &state) {
-        state["RDI"] = 69;
-        printf("%s\n", state.Description().data());
-    });
+    // must install breakpoint in a new thread
+    std::thread([&]() {
+        auto store = ProcessStore::SharedStore();
+        auto process = store->ProcessSelf();
+        auto bpHandler = BreakpointHandler::SharedHandler();
+        auto excHandler = process->exception_handler();
 
-    bpHandler->InstallBreakpoint(bp);
+        printf("hooking %p\n", addr);
+        excHandler.SetupHandler();
+        auto bp = BreakpointFactory::MakeBreakpointForProcess(
+            process.get(), (vm_address_t)addr, BreakpointType::Hardware);
+        if (!bp) return false;
+
+        bp->AddCallback([&](ThreadState &state) {
+            vm_address_t addr = state.CurrentAddress();
+            vm_address_t stack = state["RSP"];
+            stack -= 8;
+            *(uint64_t *)stack = addr;
+            state["RIP"] = (uint64_t)replacement;
+        });
+
+        bpHandler->InstallBreakpoint(bp);
+    }).join();
+
     return true;
 }

@@ -77,5 +77,5 @@ std::string x86_64ThreadState::Description() {
 }
 
 vm_address_t x86_64ThreadState::CurrentAddress() {
-    return thread_state.__rip & ~0x1;
+    return thread_state.__rip;
 }
