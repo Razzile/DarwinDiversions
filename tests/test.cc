@@ -9,25 +9,32 @@
 #include "../src/DDHookFunction.h"
 #include "../src/ProcessStore.h"
 
-#define noinline __attribute__((noinline))
+#define noinline __attribute__((noinline)) extern "C"
 
-noinline void test2() {
-    int x = 41;
-    printf("%d\n", x);
+void (*old_test)(int x);
+
+noinline void test(int);
+noinline void test2();
+
+__attribute__((naked)) void test_tramp() {
+    asm("push %rbp");
+    asm("movabs $_test, %rax");
+    asm("add $1, %rax");
+    asm("jmp *%rax");
 }
 
 noinline void test(int x) {
-    printf("%d\n", x);
+    printf(">>> I like the number %d\n", x);
+}
+
+noinline void test2() {
+    int x = 41;
+    printf(">>> I like the number %d\n", x);
+    old_test(100);
 }
 
 int main(int argc, char **argv) {
-    ProcessRef self = ProcessStore::SharedStore()->ProcessSelf();
-    if (self) {
-        printf("process has pid %d and task %d\n", self->process_id(),
-               self->task());
-    } else {
-        printf("boo you\n");
-    }
-    DDHookFunctionEx((void *)test, (void *)test2, nullptr, DD_HOOK_EXC);
+    DDHookFunctionEx((void *)test, (void *)test2, (void **)&old_test,
+                     DD_HOOK_EXC);
     test(1337);
 }

@@ -1,0 +1,3 @@
+[submodule "src/third_party/capstone"]
+	path = src/third_party/capstone
+	url = https://github.com/aquynh/capstone.git

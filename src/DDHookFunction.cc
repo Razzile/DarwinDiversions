@@ -48,6 +48,8 @@ DDHookRef DDHookFunctionEx(void *addr, void *replacement, void **original,
     return 0;
 }
 
+extern void test_tramp();
+
 bool DDHookFunctionMethodException(void *addr, void *replacement,
                                    void **original) {
     // must install breakpoint in a new thread
@@ -68,11 +70,13 @@ bool DDHookFunctionMethodException(void *addr, void *replacement,
             vm_address_t stack = state["RSP"];
             stack -= 8;
             *(uint64_t *)stack = addr;
-            state["RIP"] = (uint64_t)replacement;
+            state["RIP"] = (vm_address_t)replacement;
         });
 
         bpHandler->InstallBreakpoint(bp);
     }).join();
+
+    *original = (void *)test_tramp;
 
     return true;
 }
