@@ -11,6 +11,7 @@
 #include "BreakpointHandler.h"
 #include "DDHookFunction.h"
 #include "ProcessStore.h"
+#include "TrampolineBuilder.h"
 
 DDHookRef DDHookFunction(void *addr, void *replacement, void **original) {
     return DDHookFunctionEx(addr, replacement, original, DD_HOOK_DEFAULT);
@@ -53,18 +54,24 @@ extern void test_tramp();
 bool DDHookFunctionMethodException(void *addr, void *replacement,
                                    void **original) {
     // must install breakpoint in a new thread
+    auto store = ProcessStore::SharedStore();
+    auto process = store->ProcessSelf();
+    auto bpHandler = BreakpointHandler::SharedHandler();
+    auto excHandler = process->exception_handler();
     std::thread([&]() {
-        auto store = ProcessStore::SharedStore();
-        auto process = store->ProcessSelf();
-        auto bpHandler = BreakpointHandler::SharedHandler();
-        auto excHandler = process->exception_handler();
-
         printf("hooking %p\n", addr);
+
+        TrampolineBuilder builder;
+        Trampoline *tramp = builder.CreateTrampoline(
+            process.get(), (uintptr_t)addr, (uintptr_t)replacement, 1);
+        *(uintptr_t *)original = tramp->addr;
+
+        delete tramp;
+
         excHandler.SetupHandler();
         auto bp = BreakpointFactory::MakeBreakpointForProcess(
             process.get(), (vm_address_t)addr, BreakpointType::Hardware);
         if (!bp) return false;
-
         bp->AddCallback([&](ThreadState &state) {
             vm_address_t addr = state.CurrentAddress();
             vm_address_t stack = state["RSP"];
@@ -75,8 +82,6 @@ bool DDHookFunctionMethodException(void *addr, void *replacement,
 
         bpHandler->InstallBreakpoint(bp);
     }).join();
-
-    *original = (void *)test_tramp;
 
     return true;
 }
